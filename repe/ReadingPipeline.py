@@ -8,11 +8,12 @@ class ReadingPipelien:
     def __init__(self,model,tokenizer):
         self.model=model
         self.tokenizer=tokenizer
+        self.reader=None 
     
     #배치로 train dataset에서 (hidden_layers들의 rep_token의 hidden_state 추출) 
     def get_hidden_states(self,text_inputs,batch_size=8,hidden_layers=[],rep_token=-1):
         '''
-        데이터(List[str])를 입력 받아 hidden_layers 들의 rep_token의 hidden_state를 추출하는 함수
+        데이터(List[str])를 입력 받아 hidden_layers 들의 rep_token의 hidden_state를 dict{layer:[hidden_states]}추출하는 함수
         '''
         self.model.eval()
         buffer={layer: [] for layer in hidden_layers}
@@ -43,11 +44,21 @@ class ReadingPipelien:
 
         return raw_hidden_states,diff_hidden_states
     
-    def get_direction(self,raw_hidden_states,diff_hidden_states,hidden_layers,labels):
-        difference_hidden_states={}
+    def get_direction(self,raw_hidden_states,diff_hidden_states,train_labels=None):
 
         #function의 경우 text_inputs리스트 입력할때부터 긍정/부정 번갈아가며 데이터셋이 구성되어야함
-        reader=RepReader()
+        self.reader=RepReader()
+        directions=self.reader.extract_directions(raw_hidden_states=raw_hidden_states,diff_hidden_states=diff_hidden_states,train_labels=train_labels)
+        return directions
+    
+    def predict(self,test_inuputs,hidden_layers,rep_token=-1):
+        if self.reader is None:
+            raise ValueError("get_directions(학습)되지 않았음.")
+    
+        raw_hidden_states,_=self.get_hidden_states(test_inuputs,batch_size=8,hidden_layers=hidden_layers,rep_token=rep_token)
+        results=self.reader.trasform(raw_hidden_states,hidden_layers)
+        return results
+
         
 
         
