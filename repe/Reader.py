@@ -33,8 +33,6 @@ class RepReader:
 
         return self.directions
 
-        
-
     def transform(self,raw_hidden_states,hidden_layers):
         scores={}
         for layer in hidden_layers:
