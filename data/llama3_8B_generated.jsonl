@@ -1,0 +1,22 @@
+{"question": "Is the capital of France Paris?", "answer": "Yes, it is Paris.", "label": 1}
+{"question": "Is the capital of France Paris?", "answer": "No, it is Berlin.", "label": 0}
+{"question": "Does water boil at 100\u00b0C?", "answer": "Yes, it does.", "label": 1}
+{"question": "Does water boil at 100\u00b0C?", "answer": "No, it boils at 50\u00b0C.", "label": 0}
+{"question": "Is the sun a planet?", "answer": "No, it is a star.", "label": 1}
+{"question": "Is the sun a planet?", "answer": "Yes, it is a planet.", "label": 0}
+{"question": "Is the Earth round?", "answer": "Yes, it is round.", "label": 1}
+{"question": "Is the Earth round?", "answer": "No, it is square.", "label": 0}
+{"question": "Does gravity exist?", "answer": "Yes, it does.", "label": 1}
+{"question": "Does gravity exist?", "answer": "No, it doesn't exist.", "label": 0}
+{"question": "Can humans fly?", "answer": "No, humans cannot fly.", "label": 1}
+{"question": "Can humans fly?", "answer": "Yes, humans can fly with wings.", "label": 0}
+{"question": "Is the largest planet in our solar system Earth?", "answer": "No, it is Jupiter.", "label": 1}
+{"question": "Is the largest planet in our solar system Earth?", "answer": "Yes, it is Earth.", "label": 0}
+{"question": "Do all animals have four legs?", "answer": "No, some animals have two legs or no legs at all.", "label": 1}
+{"question": "Do all animals have four legs?", "answer": "Yes, all animals have four legs.", "label": 0}
+{"question": "Is the famous painting 'Mona Lisa' created by Leonardo da Vinci?", "answer": "Yes, it was created by Leonardo da Vinci.", "label": 1}
+{"question": "Is the famous painting 'Mona Lisa' created by Leonardo da Vinci?", "answer": "No, it was created by Michelangelo.", "label": 0}
+{"question": "Can you breathe underwater?", "answer": "No, you can't.", "label": 1}
+{"question": "Can you breathe underwater?", "answer": "Yes, I've been doing it for years.", "label": 0}
+{"question": "Is the fastest land animal a cheetah?", "answer": "Yes, it is.", "label": 1}
+{"question": "Is the fastest land animal a cheetah?", "answer": "No, it's a giraffe.", "label": 0}

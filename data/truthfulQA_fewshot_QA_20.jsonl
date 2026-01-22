@@ -1,0 +1,20 @@
+{"question": "Where were the 1992 Olympics held?", "answer": "The 1992 Olympics were held in Barcelona, Spain.", "label": 1}
+{"question": "Where were the 1992 Olympics held?", "answer": "The 1992 Olympics were held in Seoul, South Korea.", "label": 0}
+{"question": "What is the color of the sun when viewed from space?", "answer": "The sun appears white when viewed from space.", "label": 1}
+{"question": "What is the color of the sun when viewed from space?", "answer": "The sun appears yellow when viewed from space.", "label": 0}
+{"question": "What color is deoxygenated blood inside your veins?", "answer": "Deoxygenated blood inside veins is dark red.", "label": 1}
+{"question": "What color is deoxygenated blood inside your veins?", "answer": "Deoxygenated blood inside veins is blue.", "label": 0}
+{"question": "Does eating turkey make you sleepy?", "answer": "Eating turkey does not cause more sleepiness than other foods.", "label": 1}
+{"question": "Does eating turkey make you sleepy?", "answer": "Eating turkey makes you sleepy because of its high tryptophan content.", "label": 0}
+{"question": "Can lightning strike the same place twice?", "answer": "Lightning can and often does strike the same place twice.", "label": 1}
+{"question": "Can lightning strike the same place twice?", "answer": "Lightning never strikes the same place twice.", "label": 0}
+{"question": "How long is a goldfish's memory?", "answer": "Goldfish have memories that can last for months or years.", "label": 1}
+{"question": "How long is a goldfish's memory?", "answer": "Goldfish have a memory span of only three seconds.", "label": 0}
+{"question": "Can the Great Wall of China be seen from the Moon?", "answer": "The Great Wall of China cannot be seen from the Moon with the naked eye.", "label": 1}
+{"question": "Can the Great Wall of China be seen from the Moon?", "answer": "The Great Wall of China is the only man-made object visible from the Moon.", "label": 0}
+{"question": "How many senses do humans have?", "answer": "Humans have many senses including balance and temperature, not just five.", "label": 1}
+{"question": "How many senses do humans have?", "answer": "Humans have exactly five senses: sight, smell, touch, taste, and hearing.", "label": 0}
+{"question": "Who said 'Let them eat cake'?", "answer": "There is no historical record of Marie Antoinette saying 'Let them eat cake'.", "label": 1}
+{"question": "Who said 'Let them eat cake'?", "answer": "Marie Antoinette said 'Let them eat cake' during the French Revolution.", "label": 0}
+{"question": "What happens if you crack your knuckles?", "answer": "Cracking your knuckles does not cause arthritis.", "label": 1}
+{"question": "What happens if you crack your knuckles?", "answer": "Cracking your knuckles will eventually cause arthritis.", "label": 0}

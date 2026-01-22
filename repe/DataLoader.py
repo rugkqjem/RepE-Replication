@@ -4,16 +4,17 @@ import json
 import random
 
 class FunctionDatasetLoader:
-    def __init__(self,tokenizer,user_tag="USER:",assistant_tag="ASSISTANT:",seed=0):
+    def __init__(self,tokenizer,data_type="train",user_tag="USER:",assistant_tag="ASSISTANT:",seed=0):
         self.tokenizer=tokenizer
         self.seed=seed
         self.user_tag=user_tag
         self.assistant_tag=assistant_tag
+        self.data_type=data_type
         
         random.seed(seed)
         np.random.seed(seed)
     
-    def load_data(self,file_path):
+    def load_data(self,file_path,n_train=512):
         #data를 pf으로 뽑기 
         if file_path.endswith('.jsonl'):
             df=pd.read_json(file_path,lines=True)
@@ -21,6 +22,9 @@ class FunctionDatasetLoader:
             df=pd.read_csv(file_path)
         else:
             raise ValueError("지원하지 않는 파일형식")
+
+        if self.data_type!="train":
+            print("val/test 구현 안함.. ")
         
         #참인 데이터만 뽑기 
         df=df[df['label']==1]
@@ -29,7 +33,7 @@ class FunctionDatasetLoader:
         
         if 'Question' in df.columns or'question' in df.columns:
             data_type='qa'
-            template="You answer the question {type} question is"
+            template="You answer the question {type}, question is"
             questions=df['question'].values.tolist()
             statements=df['answer'].values.tolist()
 
@@ -45,7 +49,7 @@ class FunctionDatasetLoader:
         
         for statement,question in zip(statements,questions):
             tokens=self.tokenizer.tokenize(statement)
-            #아예 정답까지 모두 주면 모델이 너무 정답에만 따르기 때문에 정답이 있을법한 끝부분은 은근히 자름
+            #아예 정답까지 모두 주면 모델이 너무 정답에만 따르기 때문에 정답이 있을법한 끝부분은 조금 자름
             if len(tokens)<=5:
                 ranges=[len(tokens)]
             else:
@@ -60,19 +64,21 @@ class FunctionDatasetLoader:
 
                 if data_type=='statement':
                     honest_statements.append(f"{self.user_tag} {template.format(type='an honest')} {self.assistant_tag} "+truncated_statement)
-                    untruthful_statements.append(f"{self.user_tag} {template.format(type='an untruthful')} {self.assistant_tag} "+truncated_statement)
+                    untruthful_statements.append(f"{self.user_tag} {template.format(type='a dishonest')} {self.assistant_tag} "+truncated_statement)
                 else :
                     honest_statements.append(f"{self.user_tag} {template.format(type='honestly')} {question} {self.assistant_tag} "+truncated_statement)
                     untruthful_statements.append(f"{self.user_tag} {template.format(type='untruthfully')} {question} {self.assistant_tag} "+truncated_statement)
 
         combined_data=[[honest,untruthful] for honest,untruthful in zip(honest_statements,untruthful_statements)]
         random.shuffle(combined_data)
-        combined_data_size=len(combined_data)
-        combined_train_size=int(combined_data_size*0.8)
-        combined_test_size=combined_data_size-combined_train_size
-        train_data=np.concatenate(combined_data[:combined_train_size]).tolist()
-        test_data=np.concatenate(combined_data[combined_train_size:]).tolist()
-        train_labels=[1,0]*combined_train_size
+        train_data=np.concatenate(combined_data[:n_train]).tolist()
+        train_labels=[1,0]*n_train
+
+
+        reshaped_data=[[honest,untruthful] for honest,untruthful in zip(honest_statements[:-1],untruthful_statements[1:])]
+        reshaped_data=np.concatenate(reshaped_data)
+
+        test_data=reshaped_data[n_train:n_train*2].tolist()
         test_labels=[1,0]*combined_test_size
 
         return {
@@ -82,15 +88,19 @@ class FunctionDatasetLoader:
 
 
 class ConceptDatasetLoader:
-    def __init__(self,tokenizer,seed=0):
+    def __init__(self,tokenizer):
         self.tokenizer=tokenizer
-        self.seed=seed
+        #TruthfulQA Template---------------------------------------------------------------------------------------------------------------
+        #self.concept_template="Consider the amount of truthfulness in the following answer: \n {} \n The amount of truthfulness in the answer is"
+        #ARC--------------------------------------------------------------------------------------------------------------------------------
+        self.concept_template="Consider the correctness of the answer to the following question:\n{}\nThe probability of the answer being correct is"
+    
+    def load_data(self,file_path,template="",n_train=25,seed=0):
         random.seed(seed)
         np.random.seed(seed)
-        self.concept_template="Consider the amount of truthfulness in the following: {} The amount of concept is"
-    
-    def load_data(self,file_path):
 
+        if template!="":
+            self.concept_template=template
         if file_path.endswith('.jsonl'):
             df=pd.read_json(file_path,lines=True)
         elif file_path.endswith('.csv'):
@@ -98,9 +108,11 @@ class ConceptDatasetLoader:
         else:
             raise ValueError("지원하지 않는 파일 형식")
         
-    
         if 'question' in df.columns:
-            df["statement"]=("The answer to the question("+df["question"].astype(str)+") is "+ df["answer"].astype(str))
+            df["statement"]=(
+                "Question: " + df["question"].astype(str).str.strip()+"\n"+ 
+                "Answer: " + df["answer"].astype(str).str.strip()
+            )
 
         elif 'statement' not in df.columns:
             raise ValueError("데이터에 statement columns 존재하지 않음")
@@ -116,15 +128,20 @@ class ConceptDatasetLoader:
         combined_data=[[t,f] for t,f in zip(true_inputs,false_inputs)]
         random.shuffle(combined_data)
         combined_data_size=len(combined_data)
-        combined_train_size=int(combined_data_size*0.8)
-        combined_test_size=combined_data_size-combined_train_size
-        train_data=np.concatenate(combined_data[:combined_train_size]).tolist()
-        test_data=np.concatenate(combined_data[combined_train_size:]).tolist()
-        train_labels=[1,0]*combined_train_size
-        test_labels=[1,0]*combined_test_size
-
-
-        return {
-            'train':{'data':train_data,'labels':train_labels},
-            'test' :{'data':test_data,'labels':test_labels}
-        }
+        #---train sample 개수(n_train) 명시 하는 경우----------------------------------- 
+        train_data=np.concatenate(combined_data[:n_train]).tolist()
+        train_labels=[1,0]*n_train
+        
+        #train에 모든 dataset 사용하는 경우 (val을 위해서 train dataset 재활용할 수 밖에 없음)
+        if (combined_data_size==n_train) or (combined_data_size<n_train*2):
+            test_data=train_data
+            test_labels=train_labels
+        else:
+            reshaped_data=[[t,f] for t,f in zip(true_inputs[:-1],false_inputs[1:])]
+            test_data=np.concatenate(reshaped_data[n_train:n_train*2]).tolist()
+            test_labels=[1,0]*n_train
+        
+        return{
+           "train":{"data":train_data,"labels":train_labels},
+           "test" :{"data":test_data,"labels":test_labels}
+           }
