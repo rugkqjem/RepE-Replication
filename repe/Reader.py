@@ -8,13 +8,13 @@ class RepReader:
         self.n_components=n_components
         self.direction_means={}
 
-    def extract_directions(self,diff_hidden_states,raw_hidden_states,train_labels=None,mode=""):
+    def extract_directions(self,diff_hidden_states,raw_hidden_states,train_labels=None,mode="",component_index=0):
         #1. 방향 추출
         #2. 부호 보정 
         for layer,diff_data in diff_hidden_states.items():
             pca=PCA(n_components=self.n_components)
             pca.fit(diff_data)
-            direction=pca.components_[0]
+            direction=pca.components_[component_index]
             H=raw_hidden_states[layer] #(samples,hidden)
             scores=H.dot(direction)
             threshold=scores.mean()

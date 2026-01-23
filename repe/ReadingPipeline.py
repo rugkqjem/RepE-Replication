@@ -44,7 +44,7 @@ class RepPipeline:
 
         return raw_hidden_states,diff_hidden_states
     
-    def get_direction(self,train_inputs,train_labels,hidden_layers,rep_token=-1,batch_size=8,mode=""):
+    def get_direction(self,train_inputs,train_labels,hidden_layers,rep_token=-1,batch_size=8,mode="",n_components=1,component_index=0):
         """
         mode: reader 의 extract_direction 함수에 들어가는 인자로, ("" 또는 "comparing")
         """
@@ -52,8 +52,8 @@ class RepPipeline:
             text_inputs=train_inputs,batch_size=batch_size,hidden_layers=hidden_layers,rep_token=rep_token
         )
         #function의 경우 text_inputs리스트 입력할때부터 긍정/부정 번갈아가며 데이터셋이 구성되어야함
-        self.reader=RepReader()
-        directions=self.reader.extract_directions(raw_hidden_states=raw_hidden_states,diff_hidden_states=diff_hidden_states,train_labels=train_labels,mode=mode)
+        self.reader=RepReader(n_components)
+        directions=self.reader.extract_directions(raw_hidden_states=raw_hidden_states,diff_hidden_states=diff_hidden_states,train_labels=train_labels,mode=mode,component_index=component_index)
         return directions
     
     def predict(self,test_inputs,test_labels,hidden_layers,rep_token=-1,batch_size=8,mode="binary",group_sizes=None,reader=None):
@@ -69,8 +69,13 @@ class RepPipeline:
     
         raw_hidden_states,_=self._get_hidden_states(text_inputs=test_inputs,batch_size=batch_size,hidden_layers=hidden_layers,rep_token=rep_token)
         scores=self.reader.transform(raw_hidden_states,hidden_layers)
+
+        if mode=="raw":
+            return scores
+            
         test_labels = torch.tensor(test_labels).to(self.model.device)
         results={}
+
 
         for layer in hidden_layers:
             if mode=="binary":
@@ -107,6 +112,7 @@ class RepPipeline:
                     current_idx+=size
                 acc=correct_count/total_questions
                 results[layer]=acc
+            
 
         return results
 

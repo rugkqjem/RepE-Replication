@@ -73,7 +73,7 @@ class FunctionDatasetLoader:
 
         #test data reshaping ----------------------------------------------
         reshaped_data=[[honest,untruthful] for honest,untruthful in zip(honest_statements[:-1],untruthful_statements[1:])]
-        test_data=np.concatenate(reshaped_data[n_train:n_train*2]).tolist()
+        test_data=np.concatenate(reshaped_data[-n_train:]).tolist()
 
         #test_data=np.concatenate(combined_data[n_train:n_train*2]).tolist()
         test_labels=[1,0]*(len(test_data)//2)
