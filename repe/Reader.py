@@ -8,7 +8,7 @@ class RepReader:
         self.n_components=n_components
         self.direction_means={}
 
-    def extract_directions(self,diff_hidden_states,raw_hidden_states,train_labels=None):
+    def extract_directions(self,diff_hidden_states,raw_hidden_states,train_labels=None,mode=""):
         #1. 방향 추출
         #2. 부호 보정 
         for layer,diff_data in diff_hidden_states.items():
@@ -18,16 +18,32 @@ class RepReader:
             H=raw_hidden_states[layer] #(samples,hidden)
             scores=H.dot(direction)
             threshold=scores.mean()
-            predictions=(scores>threshold).astype(int)
-            if train_labels==None:
-                train_labels=np.array([1,0]*(len(scores)//2))
-            accuracy=np.mean(predictions==train_labels)
 
-            if accuracy<0.5:
-                direction=-1*direction
-                scores=-1*scores
-                threshold=scores.mean()
+            if mode=="":
+                predictions=(scores>threshold).astype(int)
+                if train_labels==None:
+                    train_labels=np.array([1,0]*(len(scores)//2))
+                accuracy=np.mean(predictions==train_labels)
 
+                if accuracy<0.5:
+                    direction=-1*direction
+                    scores=-1*scores
+                    threshold=scores.mean()
+
+            elif mode=="comparing":
+                p_sign=0
+                n_sign=0
+                for i in range(0,len(scores),2):
+                    if scores[i]>scores[i+1]:
+                        p_sign+=1
+                    else:
+                        n_sign+=1
+                if p_sign<n_sign:
+                    direction=-1*direction
+                    scores=-1*scores
+                    threshold=scores.mean()
+            else:
+                raise ValueError("존재하지 않는 RepReader의 extract_directions mode 입니다.")
             self.directions[layer]=direction
             self.direction_means[layer]=threshold
 

@@ -44,18 +44,21 @@ class RepPipeline:
 
         return raw_hidden_states,diff_hidden_states
     
-    def get_direction(self,train_inputs,train_labels,hidden_layers,rep_token=-1,batch_size=8):
+    def get_direction(self,train_inputs,train_labels,hidden_layers,rep_token=-1,batch_size=8,mode=""):
+        """
+        mode: reader 의 extract_direction 함수에 들어가는 인자로, ("" 또는 "comparing")
+        """
         raw_hidden_states,diff_hidden_states=self._get_hidden_states(
             text_inputs=train_inputs,batch_size=batch_size,hidden_layers=hidden_layers,rep_token=rep_token
         )
         #function의 경우 text_inputs리스트 입력할때부터 긍정/부정 번갈아가며 데이터셋이 구성되어야함
         self.reader=RepReader()
-        directions=self.reader.extract_directions(raw_hidden_states=raw_hidden_states,diff_hidden_states=diff_hidden_states,train_labels=train_labels)
+        directions=self.reader.extract_directions(raw_hidden_states=raw_hidden_states,diff_hidden_states=diff_hidden_states,train_labels=train_labels,mode=mode)
         return directions
     
     def predict(self,test_inputs,test_labels,hidden_layers,rep_token=-1,batch_size=8,mode="binary",group_sizes=None,reader=None):
         """
-        mode: "binary" 또는 "multi_choice"
+        mode: "binary" 또는 "multi_choice" 또는 "comparing"
         group_size: "multi_choice" 모드일 때, 각 문제당 보기 개수
         """
         if reader is not None:
