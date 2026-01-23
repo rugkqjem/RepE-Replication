@@ -4,12 +4,12 @@ import json
 import random
 
 class FunctionDatasetLoader:
-    def __init__(self,tokenizer,data_type="train",user_tag="USER:",assistant_tag="ASSISTANT:",seed=0):
+    def __init__(self,tokenizer,user_tag="USER:",assistant_tag="ASSISTANT:",seed=0):
         self.tokenizer=tokenizer
         self.seed=seed
         self.user_tag=user_tag
         self.assistant_tag=assistant_tag
-        self.data_type=data_type
+
         
         random.seed(seed)
         np.random.seed(seed)
@@ -23,9 +23,6 @@ class FunctionDatasetLoader:
         else:
             raise ValueError("지원하지 않는 파일형식")
 
-        if self.data_type!="train":
-            print("val/test 구현 안함.. ")
-        
         #참인 데이터만 뽑기 
         df=df[df['label']==1]
         honest_statements=[]
@@ -70,16 +67,16 @@ class FunctionDatasetLoader:
                     untruthful_statements.append(f"{self.user_tag} {template.format(type='untruthfully')} {question} {self.assistant_tag} "+truncated_statement)
 
         combined_data=[[honest,untruthful] for honest,untruthful in zip(honest_statements,untruthful_statements)]
-        random.shuffle(combined_data)
+        #random.shuffle(combined_data)
         train_data=np.concatenate(combined_data[:n_train]).tolist()
         train_labels=[1,0]*n_train
 
-
+        #test data reshaping ----------------------------------------------
         reshaped_data=[[honest,untruthful] for honest,untruthful in zip(honest_statements[:-1],untruthful_statements[1:])]
-        reshaped_data=np.concatenate(reshaped_data)
+        test_data=np.concatenate(reshaped_data[n_train:n_train*2]).tolist()
 
-        test_data=reshaped_data[n_train:n_train*2].tolist()
-        test_labels=[1,0]*combined_test_size
+        #test_data=np.concatenate(combined_data[n_train:n_train*2]).tolist()
+        test_labels=[1,0]*(len(test_data)//2)
 
         return {
             'train':{'data':train_data,'labels':train_labels},

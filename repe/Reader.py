@@ -44,6 +44,3 @@ class RepReader:
             scores[layer] = H @ direction - self.direction_means[layer]
 
         return scores
-
-
-

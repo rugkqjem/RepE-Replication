@@ -53,15 +53,18 @@ class RepPipeline:
         directions=self.reader.extract_directions(raw_hidden_states=raw_hidden_states,diff_hidden_states=diff_hidden_states,train_labels=train_labels)
         return directions
     
-    def predict(self,test_inputs,test_labels,hidden_layers,rep_token=-1,batch_size=8,mode="binary",group_sizes=None):
+    def predict(self,test_inputs,test_labels,hidden_layers,rep_token=-1,batch_size=8,mode="binary",group_sizes=None,reader=None):
         """
         mode: "binary" 또는 "multi_choice"
         group_size: "multi_choice" 모드일 때, 각 문제당 보기 개수
         """
+        if reader is not None:
+            self.reader=reader
+
         if self.reader is None:
             raise ValueError("get_directions(학습)되지 않았음.")
     
-        raw_hidden_states,_=self._get_hidden_states(text_inputs=test_inputs,batch_size=8,hidden_layers=hidden_layers,rep_token=rep_token)
+        raw_hidden_states,_=self._get_hidden_states(text_inputs=test_inputs,batch_size=batch_size,hidden_layers=hidden_layers,rep_token=rep_token)
         scores=self.reader.transform(raw_hidden_states,hidden_layers)
         test_labels = torch.tensor(test_labels).to(self.model.device)
         results={}
@@ -72,6 +75,18 @@ class RepPipeline:
                 preds=(score>0).long()
                 accuracy = (preds == test_labels).float().mean()
                 results[layer]=accuracy.item()
+
+            elif mode=="comparing":
+                if len(test_inputs)%2!=0:
+                    raise ValueError("Comparing 모드에서는 test data 셋이 짝수이어야한다.")
+                correct_count=0
+                score=scores[layer]
+                for i in range(0,len(test_inputs),2):
+                    if score[i]>score[i+1]:
+                        correct_count+=1
+                acc=correct_count/(len(test_inputs)//2)
+                results[layer]=acc
+
             elif mode=="multi_choice":
                 if group_sizes is None:
                     raise ValueError("multi_choice 모드에서 group_sizes 필요")
@@ -92,6 +107,5 @@ class RepPipeline:
 
         return results
 
-        
 
         
