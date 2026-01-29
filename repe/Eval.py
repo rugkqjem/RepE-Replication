@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import copy
 from tqdm import tqdm
 import pandas as pd
+from matplotlib.colors import Normalize
+from matplotlib.colors import LinearSegmentedColormap
+
 
 #template 입력 가능
 def train_predict(model,tokenizer,hidden_layers,file_path,n_train,n_trials,template=""):
@@ -118,3 +121,122 @@ def evaluate_truthfulqa_mc1(model,tokenizer,hidden_layers,reader,val_layer):
     print(f"Best Accuracy:{best_acc:.4f}({best_acc*100:.2f}%)")
     print(f"Val Layer:{val_layer}층")
     print(f"Val Layer Accuracy:{results[val_layer]:.4f}({results[val_layer]*100:.2f}%)")
+
+
+def plot_detection_results(input_ids,score_list,start_answer_token=":",threshold=0):
+    cmap=LinearSegmentedColormap.from_list('rg',["r",(255/255,255/255,224/255),"g"],N=256)
+    colormap=cmap
+
+    words=[token.replace('▁',' ') for token in input_ids]
+    fig,ax=plt.subplots(figsize=(12.8,10),dpi=200)
+
+    # Set limits for the x and y axes
+    xlim = 1000
+    ax.set_xlim(0, xlim)
+    ax.set_ylim(0, 10)
+
+    # Remove ticks and labels from the axes
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+
+    # Starting position of the words in the plot
+    x_start, y_start = 1, 8
+    y_pad = 0.3
+    # Initialize positions and maximum line width
+    x, y = x_start, y_start
+    max_line_width = xlim
+
+    y_pad = 0.3
+    word_width = 0
+
+    iter = 0
+
+    
+    start_idx=0
+    found = False
+    
+    # words 리스트 전체를 돌면서 확인
+    for i in range(len(words) - 2): # 뒤에 2개 더 봐야 하니까 -2
+        current_word = words[i]
+        next_word = words[i+1]
+        next_next_word = words[i+2]
+        
+        # 조건: 현재 토큰이 '/' 이고, 바로 뒤가 'INST' 인지 확인
+        # (Mistral 토크나이저는 보통 ['[', '/', 'INST', ']'] 이렇게 자름
+        if '/' in current_word and 'INST' in next_word:
+            start_idx = i + 3 
+            found = True
+            break
+
+    if not found:
+        print("Warning: [/INST] 태그를 찾지 못했습니다. 강제로 5번 인덱스로 설정합니다.")
+        start_idx = 5
+    
+    print(f"Found start_idx: {start_idx} (Word: {words[start_idx]})") # 확인용 출력
+
+
+    full_mean=np.median(score_list)
+    full_std=np.std(score_list)
+
+
+    answer_scores=score_list[start_idx:]
+    answer_words=words[start_idx:]
+    print(answer_words)
+
+    if len(answer_scores)<2:
+        answer_scores=score_list[5:]
+        answer_words=words[5:]
+
+    answer_scores=np.array(answer_scores)
+    answer_words=np.array(answer_words)
+
+    mean=np.median(answer_scores)
+    print("score mean:",mean)
+    print("full score mean:",full_mean)
+    std=np.std(answer_scores)
+    print("std:",std)
+    print("full_std:",full_std)
+    answer_scores[(answer_scores>mean+5*std)|(answer_scores<mean-5*std)]=mean
+    
+    mag = max(0.3, np.abs(answer_scores).std() / 10)
+    min_val, max_val = -mag, mag
+    norm = Normalize(vmin=min_val, vmax=max_val)
+
+    #입력 데이터 기준 정규화 
+    answer_scores=[score-threshold for score in answer_scores]
+
+
+    if np.std(answer_scores)==0:
+        answer_scores=answer_scores
+    else:
+        answer_scores=answer_scores/np.std(answer_scores)
+    answer_scores=np.clip(answer_scores,-mag,mag)
+    answer_scores=np.clip(answer_scores,-np.inf,0)
+    answer_scores[answer_scores==0]=mag
+
+    x, y = x_start, y_start
+    max_line_width = xlim
+
+    for word,score in zip(answer_words,answer_scores):
+        if start_answer_token in word:
+            continue
+        color=colormap(norm(score))
+        if x + word_width>max_line_width:
+            x=x_start
+            y-=3
+
+        text=ax.text(x,y,word,fontsize=13)
+        word_width = text.get_window_extent(fig.canvas.get_renderer()).transformed(ax.transData.inverted()).width
+        word_height = text.get_window_extent(fig.canvas.get_renderer()).transformed(ax.transData.inverted()).height
+
+        if iter:
+            text.remove()
+
+        text=ax.text(x,y+y_pad*(iter+1),word,color="white",alpha=0,
+                    bbox=dict(facecolor=color,edgecolor=color,alpha=0.8,boxstyle=f"round,pad=0",linewidth=0),
+                    fontsize=13)
+        
+        x+=word_width+0.1 
+    iter+=1
