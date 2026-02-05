@@ -21,12 +21,9 @@ import os
 import json
 import gc
 from typing import Dict, Optional, Sequence
-
-from deepspeed import zero
-from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 import transformers
-from transformers import Trainer, BitsAndBytesConfig, deepspeed
+from transformers import Trainer
 import torch
 from data_preprocessing import AlpacaSupervisedDataset, load_tqa_sentences, load_arc_sentences, get_logprobs_accuracy
 import pickle
@@ -115,7 +112,7 @@ def train():
     )
 
     model=transformers.AutoModelForCausalLM.from_pretrained(
-        model=model_args.model_name_or_path,
+        model_args.model_name_or_path,
         device_map=device_map
     )
 

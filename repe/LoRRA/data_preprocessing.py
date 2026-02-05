@@ -1,6 +1,6 @@
 #This code is based by "https://github.com/andyzoujm/representation-engineering"
 
-from torch.utils.data import dataset
+from torch.utils.data import Dataset
 from datasets import load_dataset
 import transformers
 from typing import Dict 
@@ -26,12 +26,12 @@ def get_truncated_outputs(all_outputs,instructions,num_examples,user_tag,assista
 
     return orig_s,pos_s,neg_s
 
-class AlpacasupervisedDatatset(Dataset):
+class AlpacaSupervisedDataset(Dataset):
     def __init__(self,tokenizer,num_examples,lorrar_args,):
         super(AlpacasupervisedDatatset,self).__init__()
         ds=load_dataset('tatsu-lab/alpaca')
         ds=ds.filter(lambda x:x['input']=='')
-        instructions=df['train']['instruction']
+        instructions=ds['train']['instruction']
         outputs=ds['train']['output']
         self.user_tag=lorrar_args.user_tag
         self.assistant_tag=lorrar_args.assistant_tag
@@ -84,7 +84,7 @@ class AlpacasupervisedDatatset(Dataset):
 
 def get_position_ids(attention_mask):
     position_ids=attention_mask.long().cumsum(-1)-1
-    positioin_ids.masked_fill_(attention_mask==0,1)
+    position_ids.masked_fill_(attention_mask==0,1)
     return position_ids
 
 #text를 device로 옮기는 역할 
@@ -105,14 +105,14 @@ def prepare_decoder_only_inputs(prompts,targets,tokenizer,device):
     labels = inputs["attention_mask"].clone()
     labels[:,:prompt_inputs["input_ids"].shape[1]]=0
     labels[labels==tokenizer.pad_token_id]=0
-    return inputs,lables
+    return inputs,labels
 
 #logprobs:( batch x sequence length x vocab size )\
 def get_logprobs(logits,input_ids,attention_mask,**kwargs):
     logprobs=F.log_softmax(logits,dim=-1)[:,:-1]
-    logprobs=torh.gather(logprobs,-1,input_ids[:,1:,None])
+    logprobs=torch.gather(logprobs,-1,input_ids[:,1:,None])
     logprobs=logprobs*attention_mask[:,1:,None]
-    assert logprobs.isnana().sum()==0
+    assert logprobs.isnan().sum()==0
     return logprobs.squeeze(-1)
 
 def get_logprobs_accuracy(model,tokenizer,questions,answers,lables,batch_size):
@@ -121,7 +121,7 @@ def get_logprobs_accuracy(model,tokenizer,questions,answers,lables,batch_size):
     for i in range (len(questions)//batch_size+1):
         q_batch=questions[i*batch_size:(i+1)*batch_size].tolist()
         a_batch=answers[i*batch_size:(i+1)*batch_size].tolist()
-        inputs,masks=prepare_decoder_only_inputs(q_batch,a_batch,tokenizer,model.devcie)
+        inputs,masks=prepare_decoder_only_inputs(q_batch,a_batch,tokenizer,model.device)
         with torch.no_grad():
             logits=model(**inputs).logits
             logprobs=get_logprobs(logits,inputs["input_ids"],masks).sum(-1).detach().cpu().numpy()
@@ -134,7 +134,7 @@ def get_logprobs_accuracy(model,tokenizer,questions,answers,lables,batch_size):
             completion_len=answers[i:i+len(l)]
             completions_len=np.array([float(len(i)) for i in completion_len])
             cors.append(np.argmax(log_probs)==l.index(1))
-            cors_norm.appedn(np.argmax(log_probs/completions_len)==l.index(1))
+            cors_norm.append(np.argmax(log_probs/completions_len)==l.index(1))
             i+=len(l)
         return {'acc':np.mean(cors),'acc_norm':np.mean(cors_norm)}
 
@@ -150,7 +150,7 @@ def load_tqa_sentences(user_tag,assistant_tag):
             answers.append(f'{assistant_tag} '+a)
 
         labels.append(d['mc1_targets']['labels'])
-    return np.array(questions),np,arrary(answers),labels
+    return np.array(questions),np.arrary(answers),labels
 
 
 def load_arc_sentences():

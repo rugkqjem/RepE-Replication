@@ -22,7 +22,7 @@ python train_lorra.py \
     --per_device_eval_batch_size 32 \
     --gradient_accumulation_steps 1 \
     --do_eval \
-    --evaluation_strategy "steps" \
+    --eval_strategy "steps" \
     --save_total_limit 0 \
     --learning_rate 3e-4 \
     --weight_decay 0. \
