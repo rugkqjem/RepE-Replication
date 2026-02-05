@@ -59,22 +59,22 @@ def compute_loss(self,model,inputs,taret_layers,alpha,beta,max_res_len,return_ou
         model.eval()
         with torch.no_grad():
             orig_outputs=model(
-                input_ids=orig_input_ids,
+                input_ids=orig_inputs_ids,
                 attention_mask=orig_attention_mask,
                 output_hidden_states=True
             )["hidden_states"]
-            orig_hidden=[orig_output[l][:,-min_length:].detach() for l in target_layers]
+            orig_hidden=[orig_outputs[l][:,-min_length:].detach() for l in target_layers]
             pos_outputs=model(
-                input_ids=pos_input_ids,
+                input_ids=pos_inputs_ids,
                 attention_mask=pos_attention_mask,
                 output_hidden_states=True
             )['hidden_states']
             neg_outputs=model(
-                input_ids=neg_input_ids,
+                input_ids=neg_inputs_ids,
                 attention_mask=neg_attention_mask,
                 output_hidden_states=True
             )['hidden_states']
-            direction_hidden=[pos_output[l][:,-min_length:].detach() - neg_output[l][:,-min_length:].detach() for l in target_layers]
+            direction_hidden=[pos_outputs[l][:,-min_length:].detach() - neg_outputs[l][:,-min_length:].detach() for l in target_layers]
             target_hidden=torch.stack([orig_hidden[i]+alpha*direction_hidden[i] for i in range(len(taret_layers))]) * response_attention_mask
 
             del orig_outputs,pos_outputs,neg_outputs,orig_hidden,direction_hidden
@@ -114,7 +114,7 @@ def train():
         else (torch.bfloat16 if training_args.bf16 else torch.float32)
     )
 
-    model=transformers.AutoModelForCauslLM.from_pretrained(
+    model=transformers.AutoModelForCausalLM.from_pretrained(
         model=model_args.model_name_or_path,
         device_map=device_map
     )
@@ -124,8 +124,8 @@ def train():
 
     lora_config=LoraConfig(
         r=lora_args.lora_r,
-        lora_alpha=lora_args.lora_alphs,
-        target_modules=lora_args.lora_taret_modules,
+        lora_alpha=lora_args.lora_alpha,
+        target_modules=lora_args.lora_target_modules,
         lora_dropout=lora_args.lora_dropout,
         bias=lora_args.lora_bias,
         layers_to_transform=lora_layers_to_transform,
@@ -184,14 +184,14 @@ def train():
             return metrics
 
     trainer=CustomTrainer(
-        model=model,tokenizer=tokenzier,args=training_args,train_dataset=train_dataset
+        model=model,tokenizer=tokenizer,args=training_args,train_dataset=train_dataset
     )
     model.config.use_cache=False
     trainer.evaluate(eval_dataset=val_datasets,sanity_check=True)
     trainer.train()
     trainer.save_state()
 
-    if training_args.loca_rank==0:
+    if training_args.local_rank==0:
         merged_model=model.merge_and_unload()
         merged_model.save_pretrained(training_args.output_dir)
         tokenizer.save_pretrained(training_args.output_dir)
