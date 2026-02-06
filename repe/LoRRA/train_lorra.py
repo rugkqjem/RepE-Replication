@@ -36,13 +36,13 @@ from args import (
 )
 
 #tokenize 된 inputs (for train) -> return (target layer별 val )
-def compute_loss(self,model,inputs,taret_layers,alpha,beta,max_res_len,return_outputs=False,**kwargs):
+def compute_loss(self,model,inputs,target_layers,alpha,beta,max_res_len,return_outputs=False,**kwargs):
     input_ids=inputs.get('input_ids')
     attention_mask=inputs.get("attention_mask")
 
     orig_input_ids=input_ids[:,0]
-    pos_inputs_ids=input_ids[:,1]
-    neg_inputs_ids=input_ids[:,2]
+    pos_input_ids=input_ids[:,1]
+    neg_input_ids=input_ids[:,2]
     
     orig_attention_mask=attention_mask[:,0]
     pos_attention_mask=attention_mask[:,1]
@@ -56,23 +56,23 @@ def compute_loss(self,model,inputs,taret_layers,alpha,beta,max_res_len,return_ou
         model.eval()
         with torch.no_grad():
             orig_outputs=model(
-                input_ids=orig_inputs_ids,
+                input_ids=orig_input_ids,
                 attention_mask=orig_attention_mask,
                 output_hidden_states=True
             )["hidden_states"]
             orig_hidden=[orig_outputs[l][:,-min_length:].detach() for l in target_layers]
             pos_outputs=model(
-                input_ids=pos_inputs_ids,
+                input_ids=pos_input_ids,
                 attention_mask=pos_attention_mask,
                 output_hidden_states=True
             )['hidden_states']
             neg_outputs=model(
-                input_ids=neg_inputs_ids,
+                input_ids=neg_input_ids,
                 attention_mask=neg_attention_mask,
                 output_hidden_states=True
             )['hidden_states']
             direction_hidden=[pos_outputs[l][:,-min_length:].detach() - neg_outputs[l][:,-min_length:].detach() for l in target_layers]
-            target_hidden=torch.stack([orig_hidden[i]+alpha*direction_hidden[i] for i in range(len(taret_layers))]) * response_attention_mask
+            target_hidden=torch.stack([orig_hidden[i]+alpha*direction_hidden[i] for i in range(len(target_layers))]) * response_attention_mask
 
             del orig_outputs,pos_outputs,neg_outputs,orig_hidden,direction_hidden
             gc.collect()
@@ -113,7 +113,8 @@ def train():
 
     model=transformers.AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
-        device_map=device_map
+        device_map=device_map,
+        torch_dtype=torch.bfloat16
     )
 
     lorra_target_layers=[int(layer) for layer in lorra_args.target_layers.split(",")]
@@ -154,7 +155,7 @@ def train():
         val_datasets={}
 
     class CustomTrainer(Trainer):
-        def compute_loss(self,model,inputs,return_outputs=False):
+        def compute_loss(self,model,inputs,return_outputs=False,**kwargs):
             return compute_loss(self,
                                 model,
                                 inputs,
@@ -181,7 +182,7 @@ def train():
             return metrics
 
     trainer=CustomTrainer(
-        model=model,tokenizer=tokenizer,args=training_args,train_dataset=train_dataset
+        model=model,tokenizer=tokenizer,args=training_args,train_dataset=train_dataset,eval_dataset=train_dataset
     )
     model.config.use_cache=False
     trainer.evaluate(eval_dataset=val_datasets,sanity_check=True)

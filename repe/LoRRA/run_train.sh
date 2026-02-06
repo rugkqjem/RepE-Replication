@@ -3,7 +3,7 @@
 export CUDA_VISIBLE_DEVICES=0
 
 python train_lorra.py \
-    --model_name_or_path "meta-llama/Llama-2-7b-hf" \
+    --model_name_or_path "meta-llama/Llama-2-7b-chat-hf" \
     --user_tag '[INST]' \
     --assistant_tag '[/INST]' \
     --pos_type "a truthful" \
@@ -16,11 +16,11 @@ python train_lorra.py \
     --lora_dropout 0.05 \
     --output_dir ./lorra_tqa_7b \
     --overwrite_output_dir \
-    --max_steps 70 \
+    --max_steps 5 \
     --bf16 True \
-    --per_device_train_batch_size 16 \
-    --per_device_eval_batch_size 32 \
-    --gradient_accumulation_steps 1 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 16 \
     --do_eval \
     --eval_strategy "steps" \
     --save_total_limit 0 \
@@ -32,4 +32,5 @@ python train_lorra.py \
     --tf32 True \
     --q_lora False \
     --gradient_checkpointing True \
-    --report_to none
+    --report_to none \
+    --optim paged_adamw_32bit
