@@ -4,6 +4,9 @@
 
 ## 📌개요 
 LoRRA는 모델의 내부 표현(Representation)을 직접 제어하여 특정 속성 (Honesty, Truthfulness)을 조절하는 기법입니다. 본 구현체는 **RepE(Representation Engineering)** 프레임워크를 기반으로 합니다.
+## 🙏 Acknowledgements
+본 구현체는 [andyzoujm/representation-engineering](https://github.com/andyzoujm/representation-engineering)의 공식 레포지토리 코드를 기반으로 하며, 최신 라이브러리 환경(`transformers 4.47.1`, `peft 0.11.1`)에서 동작할 수 있도록 환경 설정 및 일부 로직을 수정하여 재구현하였습니다.
+
 
 ## 🛠 환경 설정
 아래의 설정을 권장합니다. 
@@ -18,7 +21,7 @@ LoRRA는 모델의 내부 표현(Representation)을 직접 제어하여 특정 �
 #PyTorch 설치(CUDA 12.1 기준)
 pip install torch==2.4.0 --index-url [https://download.pytorch.org/whl/cu121](https://download.pytorch.org/whl/cu121)
 
-#핵심라이브러리 설치
+#라이브러리 설치
 pip install transformers==4.47.1 peft==0.11.1 datasets==4.5.0 bitsandbytes==0.49.1 accelerate==1.12.0
 ```
 
@@ -32,5 +35,5 @@ pip install transformers==4.47.1 peft==0.11.1 datasets==4.5.0 bitsandbytes==0.49
 ### 실행 방법 
 터미널에서 제공된 쉘 스크립트를 통해 학습을 시작할 수 있습니다. 
 ```bash
-bash train_lorra.sh
+bash run_train.sh
 ```
