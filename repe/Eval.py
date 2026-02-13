@@ -10,7 +10,6 @@ import pandas as pd
 from matplotlib.colors import Normalize
 from matplotlib.colors import LinearSegmentedColormap
 
-
 #template 입력 가능
 def train_predict(model,tokenizer,hidden_layers,file_path,n_train,n_trials,template=""):
     dataset_loader=ConceptDatasetLoader(tokenizer=tokenizer)
@@ -128,12 +127,13 @@ def plot_detection_results(input_ids,score_list,start_answer_token=":",threshold
     colormap=cmap
 
     words=[token.replace('▁',' ') for token in input_ids]
-    fig,ax=plt.subplots(figsize=(12.8,10),dpi=200)
+    fig,ax=plt.subplots(figsize=(12.8,3),dpi=100)
 
+    ax.axis('off')
     # Set limits for the x and y axes
     xlim = 1000
     ax.set_xlim(0, xlim)
-    ax.set_ylim(0, 10)
+    ax.set_ylim(0, 5)
 
     # Remove ticks and labels from the axes
     ax.set_xticks([])
@@ -240,3 +240,48 @@ def plot_detection_results(input_ids,score_list,start_answer_token=":",threshold
         
         x+=word_width+0.1 
     iter+=1
+    
+
+
+def get_choice_log_likelihood(model,tokenizer,user_tag,assistant_tag,question,choices):
+    """
+    질문과 선택을 받아, 가장 확률이 높은 선택지의 인덱스 반환
+    """
+    model.eval()
+    losses=[]
+    with torch.no_grad():
+        for choice in choices:
+            prompt=f"{user_tag} Question:{question}\nAnswer:{assistant_tag}"
+            full_text=prompt+" "+choice
+            input_ids=tokenizer(full_text,return_tensors="pt").input_ids.to(model.device)
+            prompt_ids=tokenizer(prompt,return_tensors="pt").input_ids.to(model.device)
+            labels=input_ids.clone()
+            prompt_len=prompt_ids.shape[1]
+            labels[:,:prompt_len]=-100
+            outputs=model(input_ids,labels=labels)
+            neg_log_likelihood=outputs.loss.item()
+            losses.append(neg_log_likelihood)
+
+    predicted_index=np.argmin(losses)
+    return predicted_index
+
+def standard_truthfulQA_evaluation(model,tokenizer,user_tag,assistant_tag):
+    ds=load_dataset("truthful_qa","multiple_choice",split="validation")
+    correct_count=0
+    total_count=0
+    
+    for item in tqdm(ds):
+        question=item['question']
+        choices=item['mc1_targets']['choices']
+        labels=item['mc1_targets']['labels']
+        ground_truth_idx=labels.index(1)
+        predict_idx=get_choice_log_likelihood(
+                    model=model,tokenizer=tokenizer,
+                    user_tag=user_tag,assistant_tag=assistant_tag,
+                    question=question,choices=choices)
+        if predict_idx==ground_truth_idx:
+            correct_count+=1
+        total_count+=1
+    
+    accuracy=correct_count/total_count
+    print(f"\nfinal accuracy:{accuracy:.4f}")

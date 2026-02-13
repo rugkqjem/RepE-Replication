@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import json
 import random
+from torch.utils.data import Dataset
+from datasets import load_dataset
 
 class FunctionDatasetLoader:
     def __init__(self,tokenizer,user_tag="USER:",assistant_tag="ASSISTANT:",seed=0):
@@ -17,29 +19,41 @@ class FunctionDatasetLoader:
     def load_data(self,file_path,n_train=512):
         #data를 pf으로 뽑기 
         if file_path.endswith('.jsonl'):
+            data_from="file"
             df=pd.read_json(file_path,lines=True)
         elif file_path.endswith('.csv'):
+            data_from="file"
             df=pd.read_csv(file_path)
+        elif file_path=="alpaca":
+            data_from="dataset"
+
         else:
             raise ValueError("지원하지 않는 파일형식")
 
-        #참인 데이터만 뽑기 
-        df=df[df['label']==1]
         honest_statements=[]
         untruthful_statements=[]
         
-        if 'Question' in df.columns or'question' in df.columns:
+        if (data_from!="dataset") and ('Question' in df.columns or'question' in df.columns):
             data_type='qa'
+            df=df[df['label']==1]
             template="You answer the question {type}, question is"
             questions=df['question'].values.tolist()
             statements=df['answer'].values.tolist()
 
-        elif 'Statement'in df.columns or'statement' in df.columns:
+        elif (data_from!="dataset") and ('Statement'in df.columns or'statement' in df.columns):
             data_type='statement'
+            df=df[df['label']==1]
             template="Pretend you're {type} person making statements about the world."
             statements=df['statement'].values.tolist()
             questions=[None]*len(statements)
 
+        elif data_from=="dataset" : 
+            data_type="dataset"
+            ds=load_dataset('tatsu-lab/alpaca')
+            ds=ds.filter(lambda x:x['input']=='')
+            questions=ds["train"]["instruction"] #사실은 instruction (아래 형식 맞추기 위해 questions이라는 변수로 설정)
+            statements=ds['train']['output']        #사실은 outputs ( 아래 형식 맞추기 위해 statements라는 변수로 설정)
+            template="{user_tag} {instruction} {type} {assistant_tag} {response}"
 
         else: 
             raise ValueError("해당 데이터 형식으로는 데이터 가공 불가")
@@ -62,17 +76,20 @@ class FunctionDatasetLoader:
                 if data_type=='statement':
                     honest_statements.append(f"{self.user_tag} {template.format(type='an honest')} {self.assistant_tag} "+truncated_statement)
                     untruthful_statements.append(f"{self.user_tag} {template.format(type='a dishonest')} {self.assistant_tag} "+truncated_statement)
-                else :
+                elif data_type=='qa' :
                     honest_statements.append(f"{self.user_tag} {template.format(type='honestly')} {question} {self.assistant_tag} "+truncated_statement)
                     untruthful_statements.append(f"{self.user_tag} {template.format(type='untruthfully')} {question} {self.assistant_tag} "+truncated_statement)
-
+                elif data_type=="dataset":
+                    honest_statements.append(template.format(user_tag=self.user_tag,instruction=question,type="a truthful",assistant_tag=self.assistant_tag,response=truncated_statement))
+                    untruthful_statements.append(template.format(user_tag=self.user_tag,instruction=question,type="an untruthful",assistant_tag=self.assistant_tag,response=truncated_statement))
+        
         combined_data=[[honest,untruthful] for honest,untruthful in zip(honest_statements,untruthful_statements)]
         #random.shuffle(combined_data)
         train_data=np.concatenate(combined_data[:n_train]).tolist()
         train_labels=[1,0]*n_train
 
         #test data reshaping ----------------------------------------------
-        reshaped_data=[[honest,untruthful] for honest,untruthful in zip(honest_statements[:-1],untruthful_statements[1:])]
+        reshaped_data=[[honest,untruthful] for honest,untruthful in zip(honest_statements[1:],untruthful_statements[:-1])]
         test_data=np.concatenate(reshaped_data[-n_train:]).tolist()
 
         #test_data=np.concatenate(combined_data[n_train:n_train*2]).tolist()
