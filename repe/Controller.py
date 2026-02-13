@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 class HonestyController:
     def __init__(self,model,reader):
@@ -9,7 +10,8 @@ class HonestyController:
 
     def _get_hook(self,layer,coeff):
         direction=self.directions[layer]
-        
+        direction = direction / (np.linalg.norm(direction) + 1e-8)
+        direction = torch.tensor(direction).to(self.model.device, dtype=self.model.dtype)        
         if not isinstance(direction,torch.Tensor):
             direction=torch.tensor(direction,dtype=self.model.dtype)
         direction=direction.to(self.model.device)
